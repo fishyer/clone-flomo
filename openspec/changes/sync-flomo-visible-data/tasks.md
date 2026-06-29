@@ -20,5 +20,5 @@
 ## 4. 仓库交付
 
 - [x] 4.1 运行后端单元测试、前端单元测试、E2E 测试和 Docker Compose 启动验证。
-- [ ] 4.2 运行 OpenSpec 校验并确认 tasks 全部完成。
-- [ ] 4.3 提交包含 OpenSpec artifact、代码、测试和文档的 commit，创建 PR 并等待 GitHub Actions。
+- [x] 4.2 运行 OpenSpec 校验并确认 tasks 全部完成。
+- [x] 4.3 提交包含 OpenSpec artifact、代码、测试和文档的 commit，创建 PR 并等待 GitHub Actions。
