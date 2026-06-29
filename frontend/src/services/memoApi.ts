@@ -1,5 +1,5 @@
 import { defaultMemos } from "../data/flomoSeed";
-import type { Memo, MemoInput, MemoResult } from "../types";
+import type { Memo, MemoInput, MemoResult, MemoStats } from "../types";
 import { extractTags, sanitizeTags, sortMemos } from "../utils/memoText";
 
 const storageKey = "clone-flomo:memos";
@@ -48,6 +48,23 @@ function normalizeMemoList(raw: unknown): Memo[] {
   }
 
   return [];
+}
+
+function normalizeStats(raw: unknown): MemoStats | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const value = raw as Record<string, unknown>;
+  const memoCount = Number(value.memoCount ?? value.memo_count);
+  const tagCount = Number(value.tagCount ?? value.tag_count);
+  const usedDayCount = Number(value.usedDayCount ?? value.used_day_count);
+
+  if ([memoCount, tagCount, usedDayCount].some((item) => !Number.isFinite(item))) {
+    return null;
+  }
+
+  return { memoCount, tagCount, usedDayCount };
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -129,6 +146,15 @@ export const memoApi = {
       return { data: normalizeMemoList(data), source: "api" };
     } catch {
       return { data: readLocalMemos(), source: "local" };
+    }
+  },
+
+  async getStats(): Promise<MemoResult<MemoStats | null>> {
+    try {
+      const data = await requestJson<unknown>("/api/stats");
+      return { data: normalizeStats(data), source: "api" };
+    } catch {
+      return { data: null, source: "local" };
     }
   },
 

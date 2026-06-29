@@ -4,8 +4,10 @@ import { Sidebar } from "./components/Sidebar";
 import { MemoComposer } from "./components/MemoComposer";
 import { MemoList } from "./components/MemoList";
 import { memoApi } from "./services/memoApi";
-import type { Memo, MemoSource } from "./types";
+import type { Memo, MemoSource, MemoStats, SidebarStat } from "./types";
 import { extractTags, filterMemos } from "./utils/memoText";
+
+const pageSize = 80;
 
 export default function App() {
   const [memos, setMemos] = useState<Memo[]>([]);
@@ -16,17 +18,20 @@ export default function App() {
   const [editingValue, setEditingValue] = useState("");
   const [source, setSource] = useState<MemoSource>("local");
   const [isSaving, setIsSaving] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(pageSize);
+  const [remoteStats, setRemoteStats] = useState<MemoStats | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    memoApi.listMemos().then((result) => {
+    Promise.all([memoApi.listMemos(), memoApi.getStats()]).then(([memoResult, statsResult]) => {
       if (!active) {
         return;
       }
 
-      setMemos(result.data);
-      setSource(result.source);
+      setMemos(memoResult.data);
+      setRemoteStats(statsResult.data);
+      setSource(memoResult.source);
     });
 
     return () => {
@@ -40,10 +45,42 @@ export default function App() {
     return Array.from(tagSet);
   }, [memos]);
 
+  const stats = useMemo<SidebarStat[]>(() => {
+    const usedDays = new Set(
+      memos
+        .map((memo) => memo.createdAt.slice(0, 10))
+        .filter(Boolean)
+    );
+
+    return [
+      { value: String(memos.length), label: "笔记" },
+      { value: String(Math.max(tags.length, remoteStats?.tagCount ?? 0)), label: "标签" },
+      { value: String(Math.max(usedDays.size, remoteStats?.usedDayCount ?? 0)), label: "天" }
+    ];
+  }, [memos, remoteStats, tags]);
+
   const visibleMemos = useMemo(
     () => filterMemos(memos, query, selectedTag),
     [memos, query, selectedTag]
   );
+  const renderedMemos = visibleMemos.slice(0, visibleLimit);
+
+  useEffect(() => {
+    setVisibleLimit(pageSize);
+  }, [query, selectedTag]);
+
+  useEffect(() => {
+    function loadMoreNearBottom() {
+      const distanceToBottom =
+        document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      if (distanceToBottom < 320) {
+        setVisibleLimit((current) => Math.min(current + pageSize, visibleMemos.length));
+      }
+    }
+
+    window.addEventListener("scroll", loadMoreNearBottom);
+    return () => window.removeEventListener("scroll", loadMoreNearBottom);
+  }, [visibleMemos.length]);
 
   async function handleCreate() {
     const content = draft.trim();
@@ -103,6 +140,7 @@ export default function App() {
       <Sidebar
         selectedTag={selectedTag}
         dynamicTags={tags}
+        stats={stats}
         onSelectAll={() => setSelectedTag(null)}
         onSelectTag={setSelectedTag}
       />
@@ -133,7 +171,7 @@ export default function App() {
           />
 
           <MemoList
-            memos={visibleMemos}
+            memos={renderedMemos}
             editingId={editingId}
             editingValue={editingValue}
             isSaving={isSaving}
