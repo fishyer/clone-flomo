@@ -14,6 +14,12 @@ export interface MemoInput {
 
 export type MemoSource = "api" | "local";
 
+export interface MemoStats {
+  memoCount: number;
+  tagCount: number;
+  usedDayCount: number;
+}
+
 export interface MemoResult<T> {
   data: T;
   source: MemoSource;

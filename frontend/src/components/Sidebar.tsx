@@ -1,13 +1,15 @@
-import { heatCells, navItems, pinnedTags, sidebarStats, sidebarTags } from "../data/flomoSeed";
+import { heatCells, navItems, pinnedTags, sidebarTags } from "../data/flomoSeed";
+import type { SidebarStat } from "../types";
 
 interface SidebarProps {
   selectedTag: string | null;
   dynamicTags: string[];
+  stats: SidebarStat[];
   onSelectAll: () => void;
   onSelectTag: (tag: string) => void;
 }
 
-export function Sidebar({ selectedTag, dynamicTags, onSelectAll, onSelectTag }: SidebarProps) {
+export function Sidebar({ selectedTag, dynamicTags, stats, onSelectAll, onSelectTag }: SidebarProps) {
   const allTags = mergeTags(sidebarTags, dynamicTags);
 
   return (
@@ -18,7 +20,7 @@ export function Sidebar({ selectedTag, dynamicTags, onSelectAll, onSelectTag }: 
       </div>
 
       <div className="stats-grid" aria-label="统计">
-        {sidebarStats.map((item) => (
+        {stats.map((item) => (
           <div key={item.label} className="stat-item">
             <strong>{item.value}</strong>
             <span>{item.label}</span>

@@ -1,8 +1,10 @@
 import os
-from datetime import datetime
+import json
+from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -10,6 +12,11 @@ from sqlalchemy.pool import StaticPool
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DATABASE_URL = f"sqlite:///{BACKEND_DIR / 'flomo.db'}"
 DATABASE_URL = os.getenv("CLONE_FLOMO_DATABASE_URL", DEFAULT_DATABASE_URL)
+DEFAULT_EXPORT_PATH = Path(
+    os.getenv("CLONE_FLOMO_EXPORT_PATH", str(BACKEND_DIR / "app" / "data" / "flomo-export.json"))
+)
+LOCAL_TZ = timezone(timedelta(hours=8))
+export_stats_cache: dict[str, int] = {}
 
 
 class Base(DeclarativeBase):
@@ -59,23 +66,176 @@ DEFAULT_MEMOS = [
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_memo_columns()
     seed_default_memos()
 
 
-def seed_default_memos() -> None:
+def ensure_memo_columns(bind_engine=engine) -> None:
+    if bind_engine.dialect.name != "sqlite":
+        return
+
+    with bind_engine.begin() as connection:
+        existing_columns = {
+            row[1]
+            for row in connection.execute(text("PRAGMA table_info(memos)")).fetchall()
+        }
+        if "slug" not in existing_columns:
+            connection.execute(text("ALTER TABLE memos ADD COLUMN slug VARCHAR(128)"))
+        if "source" not in existing_columns:
+            connection.execute(text("ALTER TABLE memos ADD COLUMN source VARCHAR(64)"))
+        if "tags" not in existing_columns:
+            connection.execute(text("ALTER TABLE memos ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'"))
+
+
+def seed_default_memos(
+    session_factory: sessionmaker | None = None,
+    export_path: Path | str = DEFAULT_EXPORT_PATH,
+) -> None:
     from .models import Memo
 
-    with SessionLocal() as db:
+    factory = session_factory or SessionLocal
+    exported_memos = load_exported_memos(Path(export_path))
+    export_stats_cache.clear()
+    if exported_memos:
+        export_stats_cache.update(load_export_stats(export_path))
+
+    with factory() as db:
         memo_count = db.scalar(select(func.count()).select_from(Memo)) or 0
+        if exported_memos:
+            exported_count = db.scalar(select(func.count()).select_from(Memo).where(Memo.slug.is_not(None))) or 0
+            if memo_count > 0 and exported_count == 0:
+                db.query(Memo).delete()
+                db.flush()
+
+            existing_memos = {
+                memo.slug: memo
+                for memo in db.scalars(select(Memo).where(Memo.slug.is_not(None))).all()
+                if memo.slug
+            }
+            for item in exported_memos:
+                memo = existing_memos.get(item["slug"])
+                if memo is None:
+                    memo = Memo(slug=item["slug"])
+                    db.add(memo)
+                memo.content = item["content"]
+                memo.source = item["source"]
+                memo.created_at = item["created_at"]
+                memo.updated_at = item["updated_at"]
+                memo.tags = item["tags"]
+            db.commit()
+            return
+
         if memo_count > 0:
             return
 
         for item in DEFAULT_MEMOS:
-            db.add(
-                Memo(
-                    content=item["content"],
-                    created_at=item["created_at"],
-                    updated_at=item["created_at"],
-                )
+            memo = Memo(
+                content=item["content"],
+                created_at=item["created_at"],
+                updated_at=item["created_at"],
             )
+            memo.tags = item.get("tags", [])
+            db.add(memo)
         db.commit()
+
+
+def load_exported_memos(export_path: Path) -> list[dict]:
+    if not export_path.exists():
+        return []
+
+    payload = json.loads(export_path.read_text(encoding="utf-8"))
+    memos = payload.get("memos", [])
+    if not isinstance(memos, list):
+        return []
+
+    result = []
+    for item in memos:
+        if not isinstance(item, dict):
+            continue
+        slug = str(item.get("slug") or "").strip()
+        if not slug:
+            continue
+        result.append(
+            {
+                "slug": slug,
+                "content": html_to_text(str(item.get("content") or "")),
+                "tags": normalize_tags(item.get("tags")),
+                "source": str(item.get("source") or "") or None,
+                "created_at": parse_flomo_datetime(item.get("created_at")),
+                "updated_at": parse_flomo_datetime(item.get("updated_at") or item.get("created_at")),
+            }
+        )
+    return result
+
+
+def load_export_stats(export_path: Path | str = DEFAULT_EXPORT_PATH) -> dict[str, int]:
+    path = Path(export_path)
+    if not path.exists():
+        return {}
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    counts = payload.get("counts", {})
+    if not isinstance(counts, dict):
+        return {}
+    return {
+        "memo_count": int(counts.get("memoCount") or counts.get("memos") or 0),
+        "tag_count": int(counts.get("tagCount") or counts.get("tags") or 0),
+        "used_day_count": int(counts.get("usedDayCount") or 0),
+    }
+
+
+def normalize_tags(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+
+    seen = set()
+    tags = []
+    for tag in value:
+        normalized = str(tag).replace("#", "", 1).strip()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            tags.append(normalized)
+    return tags
+
+
+def parse_flomo_datetime(value: object) -> datetime:
+    if not value:
+        return datetime.now(LOCAL_TZ)
+    raw = str(value)
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        parsed = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=LOCAL_TZ)
+    return parsed.astimezone(LOCAL_TZ)
+
+
+def html_to_text(value: str) -> str:
+    parser = FlomoHtmlTextParser()
+    parser.feed(value)
+    parser.close()
+    return parser.text()
+
+
+class FlomoHtmlTextParser(HTMLParser):
+    block_tags = {"br", "p", "div", "li"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag == "br":
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.block_tags:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+    def text(self) -> str:
+        lines = [" ".join(line.split()) for line in "".join(self.parts).splitlines()]
+        return "\n".join(line for line in lines if line).strip()

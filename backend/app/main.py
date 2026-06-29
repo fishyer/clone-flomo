@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from . import crud, models
 from .database import SessionLocal, init_db
-from .schemas import MemoCreate, MemoRead, MemoUpdate
+from .schemas import MemoCreate, MemoRead, MemoStatsRead, MemoUpdate
 
 
 def get_cors_origins() -> list[str]:
@@ -51,6 +51,10 @@ def create_app(
     @app.get("/api/memos", response_model=list[MemoRead])
     def list_memos(q: str | None = None, db: Session = Depends(get_db)) -> list[models.Memo]:
         return crud.list_memos(db, q)
+
+    @app.get("/api/stats", response_model=MemoStatsRead)
+    def get_stats(db: Session = Depends(get_db)) -> dict[str, int]:
+        return crud.get_memo_stats(db)
 
     @app.post("/api/memos", response_model=MemoRead, status_code=status.HTTP_201_CREATED)
     def create_memo(payload: MemoCreate, db: Session = Depends(get_db)) -> models.Memo:

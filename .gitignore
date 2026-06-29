@@ -11,6 +11,7 @@ venv/
 *.sqlite
 *.sqlite3
 backend/flomo.db
+backend/app/data/flomo-export.json
 
 # 测试与覆盖率
 .pytest_cache/
@@ -21,6 +22,7 @@ playwright-report/
 test-results/
 .playwright-cli/
 tmp/
+output/
 
 # 编辑器/系统
 .DS_Store

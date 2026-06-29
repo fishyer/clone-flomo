@@ -7,6 +7,7 @@ services:
       CLONE_FLOMO_CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     volumes:
       - flomo-data:/data
+      - ./backend/app/data:/app/app/data:ro
     expose:
       - "8000"
 

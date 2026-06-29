@@ -6,12 +6,33 @@
 
 - `GET /health`：健康检查。
 - `GET /api/memos`：获取备忘录列表，支持 `q` 查询内容。
+- `GET /api/stats`：获取笔记数、标签数和使用天数统计。
 - `POST /api/memos`：创建备忘录。
 - `GET /api/memos/{memo_id}`：获取单条备忘录。
 - `PATCH /api/memos/{memo_id}`：更新备忘录内容。
 - `DELETE /api/memos/{memo_id}`：删除备忘录。
 
-备忘录数据默认持久化到 `backend/flomo.db`，也可以通过 `CLONE_FLOMO_DATABASE_URL` 指定数据库地址。
+备忘录数据默认持久化到 `backend/flomo.db`，也可以通过 `CLONE_FLOMO_DATABASE_URL` 指定数据库地址。若存在 `backend/app/data/flomo-export.json`，后端启动时会优先从该私有导出文件迁移 flomo 全量数据；该文件被 `.gitignore` 排除，不提交到公开仓库。
+
+## flomo 全量数据迁移
+
+本项目本地复刻数据来自已登录 `https://v.flomoapp.com/mine` 的 IndexedDB 导出。当前本机导出结果：
+
+- 备忘录：`7994`
+- 标签：`260`
+- 使用天数：`2003`
+
+私有导出文件路径：
+
+```bash
+backend/app/data/flomo-export.json
+```
+
+注意事项：
+
+- 该文件包含原始 flomo 笔记内容，只保留在本机，不提交到 GitHub。
+- Docker Compose 通过只读挂载 `./backend/app/data:/app/app/data:ro` 读取该文件。
+- 没有该文件时，后端会回退到仓库内的少量示例种子数据，便于 CI 和公开仓库运行。
 
 ## 后端启动
 
@@ -57,7 +78,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-`npm run test:e2e` 会自动启动 Vite 开发服务器。前端会优先请求 `/api`，后端不可用时回退到本地种子数据，便于前端/E2E 独立验证。
+`npm run test:e2e` 会自动启动 FastAPI 后端和 Vite 开发服务器。E2E 使用内存 SQLite，启动时会从 `backend/app/data/flomo-export.json` 导入数据；如果该私有文件不存在，则使用仓库内示例数据。
 
 ## Docker Compose 部署
 
@@ -70,7 +91,7 @@ docker compose up --build
 - `backend`：FastAPI，仅在 Compose 内部暴露 `8000`。
 - `frontend`：Nginx 托管 React 静态资源，并把 `/api` 代理到后端。
 
-备忘录数据通过 Docker volume `flomo-data` 持久化。
+备忘录数据库通过 Docker volume `flomo-data` 持久化；私有 flomo 导出文件通过只读 bind mount 提供给后端，不会被打进镜像。
 
 ## GitHub Actions
 

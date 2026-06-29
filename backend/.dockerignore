@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+.venv/
+flomo.db
+app/data/flomo-export.json
