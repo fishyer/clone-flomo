@@ -1,9 +1,9 @@
 import type { HeatCell, Memo, SidebarStat } from "../types";
 
 export const sidebarStats: SidebarStat[] = [
-  { value: "8052", label: "笔记" },
-  { value: "243", label: "标签" },
-  { value: "2002", label: "天" }
+  { value: "7994", label: "笔记" },
+  { value: "260", label: "标签" },
+  { value: "2003", label: "天" }
 ];
 
 export const navItems = [

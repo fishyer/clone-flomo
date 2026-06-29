@@ -12,6 +12,7 @@ interface MemoCardProps {
   onEditingValueChange: (value: string) => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;
+  onDelete: () => void;
 }
 
 export function MemoCard({
@@ -22,7 +23,8 @@ export function MemoCard({
   onStartEdit,
   onEditingValueChange,
   onCancelEdit,
-  onSaveEdit
+  onSaveEdit,
+  onDelete
 }: MemoCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -49,6 +51,15 @@ export function MemoCard({
               }}
             >
               编辑笔记
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onDelete();
+              }}
+            >
+              删除笔记
             </button>
           </div>
         ) : null}

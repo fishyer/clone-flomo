@@ -118,6 +118,10 @@ function updateLocalMemo(id: string, input: MemoInput): Memo {
   return memo;
 }
 
+function deleteLocalMemo(id: string): void {
+  writeLocalMemos(readLocalMemos().filter((memo) => memo.id !== id));
+}
+
 export const memoApi = {
   async listMemos(): Promise<MemoResult<Memo[]>> {
     try {
@@ -149,6 +153,23 @@ export const memoApi = {
       return { data: normalizeMemo(data), source: "api" };
     } catch {
       return { data: updateLocalMemo(id, input), source: "local" };
+    }
+  },
+
+  async deleteMemo(id: string): Promise<MemoResult<string>> {
+    try {
+      const response = await fetch(makeUrl(`/api/memos/${id}`), {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      return { data: id, source: "api" };
+    } catch {
+      deleteLocalMemo(id);
+      return { data: id, source: "local" };
     }
   }
 };

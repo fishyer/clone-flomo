@@ -6,7 +6,7 @@ from .schemas import MemoCreate, MemoUpdate
 
 
 def list_memos(db: Session, q: str | None = None) -> list[Memo]:
-    statement = select(Memo).order_by(Memo.updated_at.desc(), Memo.id.desc())
+    statement = select(Memo).order_by(Memo.updated_at.desc(), Memo.id.asc())
     if q:
         statement = statement.where(Memo.content.contains(q.strip()))
     return list(db.scalars(statement).all())

@@ -10,6 +10,7 @@ interface MemoListProps {
   onEditingValueChange: (value: string) => void;
   onCancelEdit: () => void;
   onSaveEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 export function MemoList({
@@ -20,7 +21,8 @@ export function MemoList({
   onStartEdit,
   onEditingValueChange,
   onCancelEdit,
-  onSaveEdit
+  onSaveEdit,
+  onDelete
 }: MemoListProps) {
   return (
     <div className="memo-list" data-testid="memo-list">
@@ -35,6 +37,7 @@ export function MemoList({
           onEditingValueChange={onEditingValueChange}
           onCancelEdit={onCancelEdit}
           onSaveEdit={() => onSaveEdit(memo.id)}
+          onDelete={() => onDelete(memo.id)}
         />
       ))}
     </div>

@@ -89,6 +89,15 @@ export default function App() {
     setIsSaving(false);
   }
 
+  async function handleDelete(id: string) {
+    setIsSaving(true);
+    const result = await memoApi.deleteMemo(id);
+
+    setMemos((current) => current.filter((memo) => memo.id !== id));
+    setSource(result.source);
+    setIsSaving(false);
+  }
+
   return (
     <div className="flomo-app">
       <Sidebar
@@ -132,6 +141,7 @@ export default function App() {
             onEditingValueChange={setEditingValue}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={handleSaveEdit}
+            onDelete={handleDelete}
           />
         </section>
       </main>
