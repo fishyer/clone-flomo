@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      CLONE_FLOMO_DATABASE_URL: sqlite:////data/flomo.db
+      CLONE_FLOMO_CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    volumes:
+      - flomo-data:/data
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  flomo-data:

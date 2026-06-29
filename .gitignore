@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# SQLite 数据库
+*.db
+*.sqlite
+*.sqlite3
+backend/flomo.db
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+playwright-report/
+test-results/
+
+# 编辑器/系统
+.DS_Store
+.vscode/
+.idea/
+
+# 前端构建产物（由 frontend 子目录负责，预留）
+node_modules/
+dist/
+*.tsbuildinfo
