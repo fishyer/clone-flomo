@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => window.localStorage.clear());
 });
 
-test("renders the flomo mine layout and supports create, search, tag filter, edit", async ({
+test("renders the flomo mine layout and supports complete memo CRUD", async ({
   page
 }) => {
   await page.goto("/");
@@ -12,7 +12,7 @@ test("renders the flomo mine layout and supports create, search, tag filter, edi
   await expect(page.getByTestId("sidebar")).toBeVisible();
   await expect(page.getByText("天然")).toBeVisible();
   await expect(page.getByText("PRO")).toBeVisible();
-  await expect(page.getByText("8052")).toBeVisible();
+  await expect(page.getByText("7994")).toBeVisible();
   await expect(page.getByTestId("heatmap")).toBeVisible();
   await expect(page.getByRole("button", { name: /全部笔记/ })).toHaveClass(/active/);
   await expect(page.getByLabel("搜索笔记")).toBeVisible();
@@ -37,4 +37,8 @@ test("renders the flomo mine layout and supports create, search, tag filter, edi
   await page.getByLabel("编辑笔记内容").fill("修改后的 flomo 记录 #测试");
   await page.getByRole("button", { name: "保存编辑" }).click();
   await expect(page.getByText("修改后的 flomo 记录")).toBeVisible();
+
+  await page.getByLabel(/更多操作/).first().click();
+  await page.getByRole("button", { name: "删除笔记" }).click();
+  await expect(page.getByText("修改后的 flomo 记录")).not.toBeVisible();
 });

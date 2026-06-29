@@ -55,19 +55,23 @@ export function Sidebar({ selectedTag, dynamicTags, onSelectAll, onSelectTag }: 
       </nav>
 
       <section className="tag-section" aria-label="标签">
-        <p>置顶标签</p>
-        {pinnedTags.map((tag) => (
-          <button
-            key={tag}
-            type="button"
-            data-testid={`tag-filter-${tag}`}
-            className={`tag-filter ${selectedTag === tag ? "selected" : ""}`}
-            onClick={() => onSelectTag(tag)}
-          >
-            <span aria-hidden="true">#</span>
-            <span>{tag}</span>
-          </button>
-        ))}
+        {pinnedTags.length > 0 ? (
+          <>
+            <p>置顶标签</p>
+            {pinnedTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                data-testid={`tag-filter-${tag}`}
+                className={`tag-filter ${selectedTag === tag ? "selected" : ""}`}
+                onClick={() => onSelectTag(tag)}
+              >
+                <span aria-hidden="true">#</span>
+                <span>{tag}</span>
+              </button>
+            ))}
+          </>
+        ) : null}
 
         <p>全部标签</p>
         {allTags.map((tag) => (
